@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Songbook App MVP</title>
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>Songs of Zion Web App</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -58,7 +60,7 @@
         padding: 10px;
       }
       #song-list {
-        max-height: calc(100vh - 190px);
+        max-height: calc(100vh - 205px);
         overflow: auto;
       }
       .song-item {
@@ -116,7 +118,8 @@
   </head>
   <body>
     <header>
-      <h1>Songbook App MVP</h1>
+      <h1>Songs of Zion</h1>
+      <div class="muted">Open this app on mobile browser and save to Home Screen.</div>
       <div class="controls">
         <input id="search" placeholder="Search songs..." />
         <select id="category-filter">
@@ -158,9 +161,11 @@
         <div id="verses"></div>
       </section>
     </main>
-
     <script>
+      const CATALOG_URL = "./data/songs_of_zion_catalog.json";
+
       const state = {
+        allSongs: [],
         songs: [],
         categories: [],
         selectedSong: null,
@@ -191,6 +196,12 @@
       const savePlaylists = () =>
         localStorage.setItem("songbook:playlists", JSON.stringify(state.playlists));
 
+      const categorySortKey = (category) => {
+        const match = /^Songs (\d+)-(\d+)$/.exec(category);
+        if (match) return [0, Number(match[1]), category];
+        return [1, 0, category];
+      };
+
       function populatePlaylistSelectors() {
         const names = Object.keys(state.playlists).sort();
         el.playlistFilter.innerHTML =
@@ -216,51 +227,63 @@
               <span>${fav}</span>
             </div>
             <div class="muted row">
-              <span>${song.category}</span>
+              <span>${song.category || "Uncategorized"}</span>
               <span class="chip">Page ${song.page}</span>
             </div>
           </div>
         `;
       }
 
-      async function fetchJSON(url) {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-        return response.json();
-      }
+      function loadSongs() {
+        const q = el.search.value.trim().toLowerCase();
+        const category = el.categoryFilter.value;
+        const listFilter = el.listFilter.value;
+        const playlistFilter = el.playlistFilter.value;
 
-      async function loadSongs() {
-        const q = encodeURIComponent(el.search.value.trim());
-        const category = encodeURIComponent(el.categoryFilter.value);
-        const url = `/api/songs?q=${q}&category=${category}`;
-        const data = await fetchJSON(url);
-        let songs = data.songs;
-
-        if (el.listFilter.value === "favorites") {
+        let songs = [...state.allSongs];
+        if (q) {
+          songs = songs.filter((song) => String(song.searchable_text || "").includes(q));
+        }
+        if (category) {
+          songs = songs.filter((song) => song.category === category);
+        }
+        if (listFilter === "favorites") {
           songs = songs.filter((song) => state.favorites.includes(song.id));
         }
-        if (el.playlistFilter.value) {
-          const ids = new Set(state.playlists[el.playlistFilter.value] || []);
+        if (playlistFilter) {
+          const ids = new Set(state.playlists[playlistFilter] || []);
           songs = songs.filter((song) => ids.has(song.id));
         }
 
         state.songs = songs;
         el.resultCount.textContent = `${songs.length} songs`;
-        el.songList.innerHTML = songs.map(formatSongItem).join("");
+        el.songList.innerHTML = songs
+          .map((song) => {
+            const summary = {
+              id: song.id,
+              number: song.number,
+              title: song.title,
+              category: song.category,
+              page: song.page,
+            };
+            return formatSongItem(summary);
+          })
+          .join("");
       }
 
-      async function loadSongDetail(songId) {
-        const song = await fetchJSON(`/api/songs/${songId}`);
+      function loadSongDetail(songId) {
+        const song = state.allSongs.find((s) => s.id === songId);
+        if (!song) return;
         state.selectedSong = song;
         el.songTitle.textContent = `${song.number}. ${song.title}`;
-        el.songMeta.textContent = `${song.category} • Page ${song.page}`;
+        el.songMeta.textContent = `${song.category || "Uncategorized"} • Page ${song.page}`;
         el.chorus.textContent = song.chorus || "-";
-        el.verses.innerHTML = song.verses
+        el.verses.innerHTML = (song.verses || [])
           .map(
             (verse) => `
             <div>
               <h4>Verse ${verse.number || "?"}</h4>
-              <pre>${verse.text}</pre>
+              <pre>${verse.text || ""}</pre>
             </div>`
           )
           .join("");
@@ -286,7 +309,7 @@
         }
         saveFavorites();
         renderFavoriteButton();
-        loadSongs().catch(console.error);
+        loadSongs();
       }
 
       function createPlaylist() {
@@ -309,25 +332,41 @@
       }
 
       async function bootstrap() {
-        const categoriesData = await fetchJSON("/api/categories");
-        state.categories = categoriesData.categories || [];
+        const response = await fetch(CATALOG_URL);
+        if (!response.ok) {
+          throw new Error(`Unable to load catalog (${response.status})`);
+        }
+        const catalog = await response.json();
+        state.allSongs = catalog.songs || [];
+        state.categories = [...new Set(state.allSongs.map((song) => song.category || "Uncategorized"))]
+          .sort((a, b) => {
+            const ka = categorySortKey(a);
+            const kb = categorySortKey(b);
+            if (ka[0] !== kb[0]) return ka[0] - kb[0];
+            if (ka[1] !== kb[1]) return ka[1] - kb[1];
+            return ka[2].localeCompare(kb[2]);
+          });
         populateCategoryFilter();
         populatePlaylistSelectors();
-        await loadSongs();
+        loadSongs();
       }
 
       el.songList.addEventListener("click", (event) => {
         const item = event.target.closest(".song-item");
         if (!item) return;
-        loadSongDetail(item.dataset.id).catch(console.error);
+        loadSongDetail(item.dataset.id);
       });
-      el.search.addEventListener("input", () => loadSongs().catch(console.error));
-      el.categoryFilter.addEventListener("change", () => loadSongs().catch(console.error));
-      el.listFilter.addEventListener("change", () => loadSongs().catch(console.error));
-      el.playlistFilter.addEventListener("change", () => loadSongs().catch(console.error));
+      el.search.addEventListener("input", loadSongs);
+      el.categoryFilter.addEventListener("change", loadSongs);
+      el.listFilter.addEventListener("change", loadSongs);
+      el.playlistFilter.addEventListener("change", loadSongs);
       el.favoriteBtn.addEventListener("click", toggleFavorite);
       el.createPlaylist.addEventListener("click", createPlaylist);
       el.addPlaylistBtn.addEventListener("click", addSelectedSongToPlaylist);
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      }
 
       bootstrap().catch((error) => {
         el.resultCount.textContent = `Error: ${error.message}`;
