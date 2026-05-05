@@ -62,6 +62,32 @@ def normalize_legacy_text(raw_text: str, converter_name: str) -> str:
     return "\n".join(out_lines)
 
 
+def cleanup_unicode_artifacts(text: str) -> str:
+    """Apply targeted cleanup rules for recurring conversion artifacts."""
+    replacements = [
+        ("\u00a0", " "),
+        ("−", "-"),
+        ("–", "-"),
+        ("‐", "-"),
+        ("û[", "ளை"),
+        ("ù[", "ளெ"),
+        ("ள்[", "ள்ள"),
+        ("ா[", "ாள"),
+        ("ி[", "ிள"),
+        ("ு[", "ுள"),
+        ("[ô", "ளா"),
+        ("ú[", "ளே"),
+        ("[", "ள"),
+    ]
+
+    for old, new in replacements:
+        text = text.replace(old, new)
+
+    # Collapse accidental double spaces introduced by cleanup.
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text
+
+
 def parse_pages(raw_text: str) -> List[Tuple[int, str]]:
     matches = list(PAGE_HEADER_RE.finditer(raw_text))
     pages: List[Tuple[int, str]] = []
@@ -185,6 +211,7 @@ def build_catalog(
 ) -> None:
     raw_text = input_path.read_text(encoding="utf-8")
     normalized_text = normalize_legacy_text(raw_text=raw_text, converter_name=converter_name)
+    normalized_text = cleanup_unicode_artifacts(normalized_text)
     if unicode_text_out is not None:
         unicode_text_out.parent.mkdir(parents=True, exist_ok=True)
         unicode_text_out.write_text(normalized_text, encoding="utf-8")
