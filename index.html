@@ -1,10 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="ta">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <title>Songs of Zion Web App</title>
     <style>
       :root {
@@ -15,13 +21,15 @@
         --text: #f8fafc;
         --muted: #cbd5e1;
         --accent: #22c55e;
+        --font-tamil: "Noto Sans Tamil", "Nirmala UI", "Latha", "Vijaya", sans-serif;
       }
       * {
         box-sizing: border-box;
       }
       body {
         margin: 0;
-        font-family: Arial, sans-serif;
+        font-family: var(--font-tamil);
+        line-height: 1.45;
         background: var(--bg);
         color: var(--text);
       }
@@ -47,6 +55,7 @@
         border: 1px solid #64748b;
         background: var(--panel-2);
         color: var(--text);
+        font-family: inherit;
       }
       main {
         display: grid;
@@ -96,6 +105,7 @@
         padding: 10px;
         border-radius: 8px;
         border: 1px solid #334155;
+        font-family: inherit;
       }
       .toolbar {
         display: grid;
