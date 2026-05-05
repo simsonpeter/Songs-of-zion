@@ -55,9 +55,17 @@ def parse_song_from_page(page_number: int, page_content: str) -> Dict[str, objec
         title_lines.append(line)
         idx += 1
 
-    if not title_lines and idx < len(lines):
-        title_lines = [lines[idx]]
-        idx += 1
+    if not title_lines:
+        while idx < len(lines):
+            line = lines[idx]
+            if line in SECTION_MARKERS:
+                idx += 1
+                continue
+            if VERSE_START_RE.match(line):
+                break
+            title_lines = [line]
+            idx += 1
+            break
 
     chorus_lines: List[str] = []
     verses: List[Dict[str, object]] = []

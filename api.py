@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -30,6 +31,13 @@ def song_summary(song: Dict[str, object]) -> Dict[str, object]:
     }
 
 
+def category_sort_key(category: str) -> tuple[int, int, str]:
+    match = re.match(r"^Songs (\d+)-(\d+)$", category)
+    if match:
+        return (0, int(match.group(1)), category)
+    return (1, 0, category)
+
+
 @app.get("/api/health")
 def health() -> object:
     return jsonify({"ok": True})
@@ -38,7 +46,10 @@ def health() -> object:
 @app.get("/api/categories")
 def categories() -> object:
     catalog = load_catalog()
-    cats = sorted({song.get("category", "Uncategorized") for song in catalog.get("songs", [])})
+    cats = sorted(
+        {song.get("category", "Uncategorized") for song in catalog.get("songs", [])},
+        key=category_sort_key,
+    )
     return jsonify({"categories": cats})
 
 
