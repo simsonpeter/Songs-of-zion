@@ -1,1 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>Songs of Zion Web App</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f172a;
+        --panel: #1e293b;
+        --panel-2: #334155;
+        --text: #f8fafc;
+        --muted: #cbd5e1;
+        --accent: #22c55e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        padding: 16px;
+        background: var(--panel);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 220px 220px;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #64748b;
+        background: var(--panel-2);
+        color: var(--text);
+      }
+      main {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 12px;
+        padding: 12px;
+      }
+      .panel {
+        background: var(--panel);
+        border-radius: 10px;
+        padding: 10px;
+      }
+      #song-list {
+        max-height: calc(100vh - 205px);
+        overflow: auto;
+      }
+      .song-item {
+        padding: 10px;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        cursor: pointer;
+      }
+      .song-item:hover {
+        border-color: var(--accent);
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .chip {
+        border: 1px solid #64748b;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 0.8rem;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #0b1220;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+      }
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      @media (max-width: 900px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+        main {
+          grid-template-columns: 1fr;
+        }
+        #song-list {
+          max-height: 320px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Songs of Zion</h1>
+      <div class="muted">Open this app on mobile browser and save to Home Screen.</div>
+      <div class="controls">
+        <input id="search" placeholder="Search songs..." />
+        <select id="category-filter">
+          <option value="">All categories</option>
+        </select>
+        <select id="list-filter">
+          <option value="">All songs</option>
+          <option value="favorites">Favorites</option>
+        </select>
+      </div>
+    </header>
+    <main>
+      <section class="panel">
+        <div class="toolbar">
+          <input id="playlist-name" placeholder="New playlist name" />
+          <button id="create-playlist">Create Playlist</button>
+          <select id="playlist-filter">
+            <option value="">All playlists</option>
+          </select>
+        </div>
+        <div class="muted" id="result-count">Loading...</div>
+        <div id="song-list"></div>
+      </section>
+      <section class="panel">
+        <h2 id="song-title">Select a song</h2>
+        <div class="row">
+          <div class="muted" id="song-meta"></div>
+          <button id="favorite-btn" disabled>Toggle Favorite</button>
+        </div>
+        <div class="row" style="margin: 8px 0">
+          <select id="add-to-playlist" disabled>
+            <option value="">Add to playlist...</option>
+          </select>
+          <button id="add-playlist-btn" disabled>Add</button>
+        </div>
+        <h3>Chorus</h3>
+        <pre id="chorus">-</pre>
+        <h3>Verses</h3>
+        <div id="verses"></div>
+      </section>
+    </main>
+    <script>
+      const CATALOG_URL = "./data/songs_of_zion_catalog.json";
 
+      const state = {
+        allSongs: [],
+        songs: [],
+        categories: [],
+        selectedSong: null,
+        favorites: JSON.parse(localStorage.getItem("songbook:favorites") || "[]"),
+        playlists: JSON.parse(localStorage.getItem("songbook:playlists") || "{}"),
+      };
+
+      const el = {
+        search: document.getElementById("search"),
+        categoryFilter: document.getElementById("category-filter"),
+        listFilter: document.getElementById("list-filter"),
+        playlistFilter: document.getElementById("playlist-filter"),
+        playlistName: document.getElementById("playlist-name"),
+        createPlaylist: document.getElementById("create-playlist"),
+        resultCount: document.getElementById("result-count"),
+        songList: document.getElementById("song-list"),
+        songTitle: document.getElementById("song-title"),
+        songMeta: document.getElementById("song-meta"),
+        chorus: document.getElementById("chorus"),
+        verses: document.getElementById("verses"),
+        favoriteBtn: document.getElementById("favorite-btn"),
+        addToPlaylist: document.getElementById("add-to-playlist"),
+        addPlaylistBtn: document.getElementById("add-playlist-btn"),
+      };
+
+      const saveFavorites = () =>
+        localStorage.setItem("songbook:favorites", JSON.stringify(state.favorites));
+      const savePlaylists = () =>
+        localStorage.setItem("songbook:playlists", JSON.stringify(state.playlists));
+
+      const categorySortKey = (category) => {
+        const match = /^Songs (\d+)-(\d+)$/.exec(category);
+        if (match) return [0, Number(match[1]), category];
+        return [1, 0, category];
+      };
+
+      function populatePlaylistSelectors() {
+        const names = Object.keys(state.playlists).sort();
+        el.playlistFilter.innerHTML =
+          `<option value="">All playlists</option>` +
+          names.map((name) => `<option value="${name}">${name}</option>`).join("");
+        el.addToPlaylist.innerHTML =
+          `<option value="">Add to playlist...</option>` +
+          names.map((name) => `<option value="${name}">${name}</option>`).join("");
+      }
+
+      function populateCategoryFilter() {
+        el.categoryFilter.innerHTML =
+          `<option value="">All categories</option>` +
+          state.categories.map((cat) => `<option value="${cat}">${cat}</option>`).join("");
+      }
+
+      function formatSongItem(song) {
+        const fav = state.favorites.includes(song.id) ? "★" : "☆";
+        return `
+          <div class="song-item" data-id="${song.id}">
+            <div class="row">
+              <strong>${song.number}. ${song.title}</strong>
+              <span>${fav}</span>
+            </div>
+            <div class="muted row">
+              <span>${song.category || "Uncategorized"}</span>
+              <span class="chip">Page ${song.page}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      function loadSongs() {
+        const q = el.search.value.trim().toLowerCase();
+        const category = el.categoryFilter.value;
+        const listFilter = el.listFilter.value;
+        const playlistFilter = el.playlistFilter.value;
+
+        let songs = [...state.allSongs];
+        if (q) {
+          songs = songs.filter((song) => String(song.searchable_text || "").includes(q));
+        }
+        if (category) {
+          songs = songs.filter((song) => song.category === category);
+        }
+        if (listFilter === "favorites") {
+          songs = songs.filter((song) => state.favorites.includes(song.id));
+        }
+        if (playlistFilter) {
+          const ids = new Set(state.playlists[playlistFilter] || []);
+          songs = songs.filter((song) => ids.has(song.id));
+        }
+
+        state.songs = songs;
+        el.resultCount.textContent = `${songs.length} songs`;
+        el.songList.innerHTML = songs
+          .map((song) => {
+            const summary = {
+              id: song.id,
+              number: song.number,
+              title: song.title,
+              category: song.category,
+              page: song.page,
+            };
+            return formatSongItem(summary);
+          })
+          .join("");
+      }
+
+      function loadSongDetail(songId) {
+        const song = state.allSongs.find((s) => s.id === songId);
+        if (!song) return;
+        state.selectedSong = song;
+        el.songTitle.textContent = `${song.number}. ${song.title}`;
+        el.songMeta.textContent = `${song.category || "Uncategorized"} • Page ${song.page}`;
+        el.chorus.textContent = song.chorus || "-";
+        el.verses.innerHTML = (song.verses || [])
+          .map(
+            (verse) => `
+            <div>
+              <h4>Verse ${verse.number || "?"}</h4>
+              <pre>${verse.text || ""}</pre>
+            </div>`
+          )
+          .join("");
+        el.favoriteBtn.disabled = false;
+        el.addToPlaylist.disabled = false;
+        el.addPlaylistBtn.disabled = false;
+        renderFavoriteButton();
+      }
+
+      function renderFavoriteButton() {
+        if (!state.selectedSong) return;
+        const isFavorite = state.favorites.includes(state.selectedSong.id);
+        el.favoriteBtn.textContent = isFavorite ? "Remove Favorite" : "Add Favorite";
+      }
+
+      function toggleFavorite() {
+        if (!state.selectedSong) return;
+        const id = state.selectedSong.id;
+        if (state.favorites.includes(id)) {
+          state.favorites = state.favorites.filter((songId) => songId !== id);
+        } else {
+          state.favorites.push(id);
+        }
+        saveFavorites();
+        renderFavoriteButton();
+        loadSongs();
+      }
+
+      function createPlaylist() {
+        const name = el.playlistName.value.trim();
+        if (!name) return;
+        if (!state.playlists[name]) state.playlists[name] = [];
+        el.playlistName.value = "";
+        savePlaylists();
+        populatePlaylistSelectors();
+      }
+
+      function addSelectedSongToPlaylist() {
+        if (!state.selectedSong) return;
+        const name = el.addToPlaylist.value;
+        if (!name) return;
+        const ids = state.playlists[name] || [];
+        if (!ids.includes(state.selectedSong.id)) ids.push(state.selectedSong.id);
+        state.playlists[name] = ids;
+        savePlaylists();
+      }
+
+      async function bootstrap() {
+        const response = await fetch(CATALOG_URL);
+        if (!response.ok) {
+          throw new Error(`Unable to load catalog (${response.status})`);
+        }
+        const catalog = await response.json();
+        state.allSongs = catalog.songs || [];
+        state.categories = [...new Set(state.allSongs.map((song) => song.category || "Uncategorized"))]
+          .sort((a, b) => {
+            const ka = categorySortKey(a);
+            const kb = categorySortKey(b);
+            if (ka[0] !== kb[0]) return ka[0] - kb[0];
+            if (ka[1] !== kb[1]) return ka[1] - kb[1];
+            return ka[2].localeCompare(kb[2]);
+          });
+        populateCategoryFilter();
+        populatePlaylistSelectors();
+        loadSongs();
+      }
+
+      el.songList.addEventListener("click", (event) => {
+        const item = event.target.closest(".song-item");
+        if (!item) return;
+        loadSongDetail(item.dataset.id);
+      });
+      el.search.addEventListener("input", loadSongs);
+      el.categoryFilter.addEventListener("change", loadSongs);
+      el.listFilter.addEventListener("change", loadSongs);
+      el.playlistFilter.addEventListener("change", loadSongs);
+      el.favoriteBtn.addEventListener("click", toggleFavorite);
+      el.createPlaylist.addEventListener("click", createPlaylist);
+      el.addPlaylistBtn.addEventListener("click", addSelectedSongToPlaylist);
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      }
+
+      bootstrap().catch((error) => {
+        el.resultCount.textContent = `Error: ${error.message}`;
+      });
+    </script>
+  </body>
+</html>
