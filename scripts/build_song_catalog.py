@@ -1,16 +1,65 @@
 #!/usr/bin/env python3
-"""Build structured song JSON from extracted page-wise text."""
+"""Build structured song JSON from extracted page-wise text.
+
+This script can normalize legacy Tamil font encodings to Unicode Tamil
+before parsing into song objects.
+"""
 
 from __future__ import annotations
 
 import json
 import re
+import argparse
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 PAGE_HEADER_RE = re.compile(r"^===== PAGE (\d+) =====$", re.MULTILINE)
+PAGE_HEADER_LINE_RE = re.compile(r"^===== PAGE \d+ =====$")
 VERSE_START_RE = re.compile(r"^(\d{1,2})[.)]\s*(.+)$")
-SECTION_MARKERS = {"NWQeLs"}
+SECTION_MARKERS = {
+    "NWQeLs",
+    "சரணங்கள்",
+    "சரணம்",
+    "பல்லவி",
+    "பல்லவிஇ",
+}
+
+try:
+    from tamil import txt2unicode
+except Exception:  # pragma: no cover - available in runtime when installed
+    txt2unicode = None
+
+
+def build_converter_map() -> Dict[str, Callable[[str], str]]:
+    if txt2unicode is None:
+        return {}
+    return {
+        "dinamani": txt2unicode.dinamani2unicode,
+        "softview": txt2unicode.softview2unicode,
+        "nakkeeran": txt2unicode.nakkeeran2unicode,
+        "kavipriya": txt2unicode.kavipriya2unicode,
+    }
+
+
+def normalize_legacy_text(raw_text: str, converter_name: str) -> str:
+    converter_map = build_converter_map()
+    if converter_name not in converter_map:
+        available = ", ".join(sorted(converter_map)) or "none"
+        raise ValueError(f"Converter '{converter_name}' unavailable. Available: {available}")
+
+    converter = converter_map[converter_name]
+    out_lines: List[str] = []
+
+    for line in raw_text.splitlines():
+        if PAGE_HEADER_LINE_RE.match(line) or not line.strip():
+            out_lines.append(line)
+            continue
+        try:
+            out_lines.append(converter(line))
+        except Exception:
+            out_lines.append(line)
+
+    return "\n".join(out_lines)
 
 
 def parse_pages(raw_text: str) -> List[Tuple[int, str]]:
@@ -128,9 +177,19 @@ def parse_song_from_page(page_number: int, page_content: str) -> Dict[str, objec
     }
 
 
-def build_catalog(input_path: Path, output_path: Path) -> None:
+def build_catalog(
+    input_path: Path,
+    output_path: Path,
+    converter_name: str,
+    unicode_text_out: Optional[Path],
+) -> None:
     raw_text = input_path.read_text(encoding="utf-8")
-    pages = parse_pages(raw_text)
+    normalized_text = normalize_legacy_text(raw_text=raw_text, converter_name=converter_name)
+    if unicode_text_out is not None:
+        unicode_text_out.parent.mkdir(parents=True, exist_ok=True)
+        unicode_text_out.write_text(normalized_text, encoding="utf-8")
+
+    pages = parse_pages(normalized_text)
     songs = [parse_song_from_page(page, content) for page, content in pages]
 
     payload = {
@@ -141,13 +200,43 @@ def build_catalog(input_path: Path, output_path: Path) -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"Converter: {converter_name}")
+    if unicode_text_out is not None:
+        print(f"Wrote unicode text: {unicode_text_out}")
     print(f"Built catalog with {len(songs)} songs: {output_path}")
 
 
 def main() -> None:
-    input_path = Path("/workspace/data/songs_of_zion_extracted.txt")
-    output_path = Path("/workspace/data/songs_of_zion_catalog.json")
-    build_catalog(input_path=input_path, output_path=output_path)
+    parser = argparse.ArgumentParser(description="Build normalized song catalog JSON.")
+    parser.add_argument(
+        "--input",
+        default="/workspace/data/songs_of_zion_extracted.txt",
+        help="Input extracted text with page markers.",
+    )
+    parser.add_argument(
+        "--output",
+        default="/workspace/data/songs_of_zion_catalog.json",
+        help="Output song catalog JSON.",
+    )
+    parser.add_argument(
+        "--converter",
+        default="dinamani",
+        choices=["dinamani", "softview", "nakkeeran", "kavipriya"],
+        help="Legacy Tamil encoding converter.",
+    )
+    parser.add_argument(
+        "--unicode-text-out",
+        default="/workspace/data/songs_of_zion_unicode.txt",
+        help="Optional unicode normalized text output path.",
+    )
+    args = parser.parse_args()
+
+    build_catalog(
+        input_path=Path(args.input),
+        output_path=Path(args.output),
+        converter_name=args.converter,
+        unicode_text_out=Path(args.unicode_text_out) if args.unicode_text_out else None,
+    )
 
 
 if __name__ == "__main__":
