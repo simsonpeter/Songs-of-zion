@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#6b4f2f" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,17 +11,18 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <title>Songs of Zion Web App</title>
+    <title>Songs of Zion - Reader</title>
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: #0f172a;
-        --panel: #1e293b;
-        --panel-2: #334155;
-        --text: #f8fafc;
-        --muted: #cbd5e1;
-        --accent: #22c55e;
+        --bg: #f4ede1;
+        --paper: #fffdf8;
+        --ink: #2b2216;
+        --muted: #6f614f;
+        --border: #d8ccb9;
+        --accent: #8d5f2e;
+        --accent-2: #6b4f2f;
         --font-tamil: "Noto Sans Tamil", "Nirmala UI", "Latha", "Vijaya", sans-serif;
+        --reader-size: 20px;
       }
       * {
         box-sizing: border-box;
@@ -29,16 +30,33 @@
       body {
         margin: 0;
         font-family: var(--font-tamil);
-        line-height: 1.45;
+        line-height: 1.5;
         background: var(--bg);
-        color: var(--text);
+        color: var(--ink);
       }
-      header {
-        padding: 16px;
-        background: var(--panel);
+      .topbar {
+        padding: 14px 16px 12px;
+        background: linear-gradient(180deg, #f8f0e2 0%, #efe3cf 100%);
+        border-bottom: 1px solid var(--border);
         position: sticky;
         top: 0;
-        z-index: 10;
+        z-index: 20;
+      }
+      .brand {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: start;
+      }
+      .brand h1 {
+        margin: 0;
+        font-size: 1.35rem;
+      }
+      .brand .muted {
+        margin-top: 2px;
+      }
+      .resume-btn {
+        min-width: 130px;
       }
       .controls {
         display: grid;
@@ -52,10 +70,20 @@
         width: 100%;
         padding: 10px;
         border-radius: 8px;
-        border: 1px solid #64748b;
-        background: var(--panel-2);
-        color: var(--text);
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--ink);
         font-family: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
       }
       main {
         display: grid;
@@ -64,20 +92,37 @@
         padding: 12px;
       }
       .panel {
-        background: var(--panel);
-        border-radius: 10px;
-        padding: 10px;
+        background: var(--paper);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 6px 18px rgba(48, 34, 18, 0.07);
+      }
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
       }
       #song-list {
-        max-height: calc(100vh - 205px);
+        max-height: calc(100vh - 245px);
         overflow: auto;
       }
       .song-item {
         padding: 10px;
-        border: 1px solid #475569;
-        border-radius: 8px;
+        border: 1px solid #e5dac9;
+        background: #fff;
+        border-radius: 10px;
         margin-bottom: 8px;
         cursor: pointer;
+      }
+      .song-item.active {
+        border-color: var(--accent);
+        background: #fff4df;
       }
       .song-item:hover {
         border-color: var(--accent);
@@ -88,32 +133,46 @@
         align-items: center;
         gap: 8px;
       }
-      .muted {
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
       .chip {
-        border: 1px solid #64748b;
+        border: 1px solid #d8c8af;
         border-radius: 999px;
         padding: 2px 8px;
         font-size: 0.8rem;
+        background: #fdf6eb;
+      }
+      .reader-actions {
+        margin: 10px 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .reader-nav {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      .jump-row {
+        display: grid;
+        grid-template-columns: 110px 80px 1fr 50px 50px;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      .verse-block h4 {
+        margin-bottom: 6px;
       }
       pre {
         white-space: pre-wrap;
         word-break: break-word;
-        background: #0b1220;
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #334155;
+        background: #fffbf3;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #e6dac8;
         font-family: inherit;
+        font-size: var(--reader-size);
+        line-height: 1.65;
       }
-      .toolbar {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-      @media (max-width: 900px) {
+      @media (max-width: 1000px) {
         .controls {
           grid-template-columns: 1fr;
         }
@@ -121,15 +180,23 @@
           grid-template-columns: 1fr;
         }
         #song-list {
-          max-height: 320px;
+          max-height: 340px;
+        }
+        .jump-row {
+          grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
         }
       }
     </style>
   </head>
   <body>
-    <header>
-      <h1>Songs of Zion</h1>
-      <div class="muted">Open this app on mobile browser and save to Home Screen.</div>
+    <header class="topbar">
+      <div class="brand">
+        <div>
+          <h1>Songs of Zion - Book Reader</h1>
+          <div class="muted">Book-style reading with continue, jump, and navigation.</div>
+        </div>
+        <button id="resume-btn" class="resume-btn" disabled>Continue Reading</button>
+      </div>
       <div class="controls">
         <input id="search" placeholder="Search songs..." />
         <select id="category-filter">
@@ -155,16 +222,31 @@
       </section>
       <section class="panel">
         <h2 id="song-title">Select a song</h2>
-        <div class="row">
-          <div class="muted" id="song-meta"></div>
+        <div class="muted" id="song-meta"></div>
+
+        <div class="reader-nav">
+          <button id="prev-song" disabled>◀ Previous</button>
+          <button id="next-song" disabled>Next ▶</button>
+        </div>
+
+        <div class="jump-row">
+          <input id="song-number-jump" type="number" min="1" placeholder="Song #" />
+          <button id="jump-btn">Go</button>
+          <div class="chip" id="font-size-label">Font: 20</div>
+          <button id="font-dec">A-</button>
+          <button id="font-inc">A+</button>
+        </div>
+
+        <div class="reader-actions">
           <button id="favorite-btn" disabled>Toggle Favorite</button>
+          <div class="row">
+            <select id="add-to-playlist" disabled>
+              <option value="">Add to playlist...</option>
+            </select>
+            <button id="add-playlist-btn" disabled>Add</button>
+          </div>
         </div>
-        <div class="row" style="margin: 8px 0">
-          <select id="add-to-playlist" disabled>
-            <option value="">Add to playlist...</option>
-          </select>
-          <button id="add-playlist-btn" disabled>Add</button>
-        </div>
+
         <h3>Chorus</h3>
         <pre id="chorus">-</pre>
         <h3>Verses</h3>
@@ -173,14 +255,21 @@
     </main>
     <script>
       const CATALOG_URL = "./data/songs_of_zion_catalog.json";
+      const STORAGE = {
+        favorites: "songbook:favorites",
+        playlists: "songbook:playlists",
+        lastSongId: "songbook:lastSongId",
+        readerSize: "songbook:reader-size",
+      };
 
       const state = {
         allSongs: [],
         songs: [],
         categories: [],
         selectedSong: null,
-        favorites: JSON.parse(localStorage.getItem("songbook:favorites") || "[]"),
-        playlists: JSON.parse(localStorage.getItem("songbook:playlists") || "{}"),
+        favorites: JSON.parse(localStorage.getItem(STORAGE.favorites) || "[]"),
+        playlists: JSON.parse(localStorage.getItem(STORAGE.playlists) || "{}"),
+        readerSize: Number(localStorage.getItem(STORAGE.readerSize) || "20"),
       };
 
       const el = {
@@ -199,12 +288,18 @@
         favoriteBtn: document.getElementById("favorite-btn"),
         addToPlaylist: document.getElementById("add-to-playlist"),
         addPlaylistBtn: document.getElementById("add-playlist-btn"),
+        prevSong: document.getElementById("prev-song"),
+        nextSong: document.getElementById("next-song"),
+        jumpInput: document.getElementById("song-number-jump"),
+        jumpBtn: document.getElementById("jump-btn"),
+        fontDec: document.getElementById("font-dec"),
+        fontInc: document.getElementById("font-inc"),
+        fontSizeLabel: document.getElementById("font-size-label"),
+        resumeBtn: document.getElementById("resume-btn"),
       };
 
-      const saveFavorites = () =>
-        localStorage.setItem("songbook:favorites", JSON.stringify(state.favorites));
-      const savePlaylists = () =>
-        localStorage.setItem("songbook:playlists", JSON.stringify(state.playlists));
+      const saveFavorites = () => localStorage.setItem(STORAGE.favorites, JSON.stringify(state.favorites));
+      const savePlaylists = () => localStorage.setItem(STORAGE.playlists, JSON.stringify(state.playlists));
 
       const categorySortKey = (category) => {
         const match = /^Songs (\d+)-(\d+)$/.exec(category);
@@ -212,36 +307,71 @@
         return [1, 0, category];
       };
 
+      const escapeHTML = (input) =>
+        String(input)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+
+      function applyReaderSize() {
+        const size = Math.max(16, Math.min(30, state.readerSize));
+        state.readerSize = size;
+        document.documentElement.style.setProperty("--reader-size", `${size}px`);
+        el.fontSizeLabel.textContent = `Font: ${size}`;
+        localStorage.setItem(STORAGE.readerSize, String(size));
+      }
+
       function populatePlaylistSelectors() {
         const names = Object.keys(state.playlists).sort();
         el.playlistFilter.innerHTML =
           `<option value="">All playlists</option>` +
-          names.map((name) => `<option value="${name}">${name}</option>`).join("");
+          names.map((name) => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("");
         el.addToPlaylist.innerHTML =
           `<option value="">Add to playlist...</option>` +
-          names.map((name) => `<option value="${name}">${name}</option>`).join("");
+          names.map((name) => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("");
       }
 
       function populateCategoryFilter() {
         el.categoryFilter.innerHTML =
           `<option value="">All categories</option>` +
-          state.categories.map((cat) => `<option value="${cat}">${cat}</option>`).join("");
+          state.categories.map((cat) => `<option value="${escapeHTML(cat)}">${escapeHTML(cat)}</option>`).join("");
       }
 
       function formatSongItem(song) {
-        const fav = state.favorites.includes(song.id) ? "★" : "☆";
+        const isFavorite = state.favorites.includes(song.id);
+        const isActive = state.selectedSong && state.selectedSong.id === song.id;
         return `
-          <div class="song-item" data-id="${song.id}">
+          <div class="song-item ${isActive ? "active" : ""}" data-id="${song.id}">
             <div class="row">
-              <strong>${song.number}. ${song.title}</strong>
-              <span>${fav}</span>
+              <strong>${song.number}. ${escapeHTML(song.title)}</strong>
+              <span>${isFavorite ? "★" : "☆"}</span>
             </div>
             <div class="muted row">
-              <span>${song.category || "Uncategorized"}</span>
+              <span>${escapeHTML(song.category || "Uncategorized")}</span>
               <span class="chip">Page ${song.page}</span>
             </div>
           </div>
         `;
+      }
+
+      function getReaderCollection() {
+        if (!state.selectedSong) return state.songs.length ? state.songs : state.allSongs;
+        const inFiltered = state.songs.some((song) => song.id === state.selectedSong.id);
+        return inFiltered ? state.songs : state.allSongs;
+      }
+
+      function updateReaderNavigation() {
+        if (!state.selectedSong) {
+          el.prevSong.disabled = true;
+          el.nextSong.disabled = true;
+          return;
+        }
+        const collection = getReaderCollection();
+        const index = collection.findIndex((song) => song.id === state.selectedSong.id);
+        el.prevSong.disabled = index <= 0;
+        el.nextSong.disabled = index === -1 || index >= collection.length - 1;
       }
 
       function loadSongs() {
@@ -251,15 +381,9 @@
         const playlistFilter = el.playlistFilter.value;
 
         let songs = [...state.allSongs];
-        if (q) {
-          songs = songs.filter((song) => String(song.searchable_text || "").includes(q));
-        }
-        if (category) {
-          songs = songs.filter((song) => song.category === category);
-        }
-        if (listFilter === "favorites") {
-          songs = songs.filter((song) => state.favorites.includes(song.id));
-        }
+        if (q) songs = songs.filter((song) => String(song.searchable_text || "").includes(q));
+        if (category) songs = songs.filter((song) => song.category === category);
+        if (listFilter === "favorites") songs = songs.filter((song) => state.favorites.includes(song.id));
         if (playlistFilter) {
           const ids = new Set(state.playlists[playlistFilter] || []);
           songs = songs.filter((song) => ids.has(song.id));
@@ -268,39 +392,56 @@
         state.songs = songs;
         el.resultCount.textContent = `${songs.length} songs`;
         el.songList.innerHTML = songs
-          .map((song) => {
-            const summary = {
+          .map((song) =>
+            formatSongItem({
               id: song.id,
               number: song.number,
               title: song.title,
               category: song.category,
               page: song.page,
-            };
-            return formatSongItem(summary);
-          })
+            })
+          )
           .join("");
+        updateReaderNavigation();
+      }
+
+      function renderVerses(verses) {
+        el.verses.innerHTML = "";
+        (verses || []).forEach((verse) => {
+          const block = document.createElement("div");
+          block.className = "verse-block";
+          const title = document.createElement("h4");
+          title.textContent = `Verse ${verse.number || "?"}`;
+          const content = document.createElement("pre");
+          content.textContent = verse.text || "";
+          block.appendChild(title);
+          block.appendChild(content);
+          el.verses.appendChild(block);
+        });
+      }
+
+      function setLastSong(songId) {
+        localStorage.setItem(STORAGE.lastSongId, songId);
+        el.resumeBtn.disabled = false;
       }
 
       function loadSongDetail(songId) {
-        const song = state.allSongs.find((s) => s.id === songId);
+        const song = state.allSongs.find((item) => item.id === songId);
         if (!song) return;
         state.selectedSong = song;
+        setLastSong(song.id);
+
         el.songTitle.textContent = `${song.number}. ${song.title}`;
         el.songMeta.textContent = `${song.category || "Uncategorized"} • Page ${song.page}`;
         el.chorus.textContent = song.chorus || "-";
-        el.verses.innerHTML = (song.verses || [])
-          .map(
-            (verse) => `
-            <div>
-              <h4>Verse ${verse.number || "?"}</h4>
-              <pre>${verse.text || ""}</pre>
-            </div>`
-          )
-          .join("");
+        renderVerses(song.verses || []);
+
         el.favoriteBtn.disabled = false;
         el.addToPlaylist.disabled = false;
         el.addPlaylistBtn.disabled = false;
+
         renderFavoriteButton();
+        loadSongs();
       }
 
       function renderFavoriteButton() {
@@ -341,24 +482,63 @@
         savePlaylists();
       }
 
+      function moveSong(direction) {
+        if (!state.selectedSong) return;
+        const collection = getReaderCollection();
+        const index = collection.findIndex((song) => song.id === state.selectedSong.id);
+        if (index === -1) return;
+        const next = collection[index + direction];
+        if (next) loadSongDetail(next.id);
+      }
+
+      function jumpToSongNumber() {
+        const number = Number(el.jumpInput.value);
+        if (!number) return;
+        const target = state.allSongs.find((song) => Number(song.number) === number);
+        if (!target) {
+          el.resultCount.textContent = `Song ${number} not found`;
+          return;
+        }
+        loadSongDetail(target.id);
+      }
+
+      function resumeReading() {
+        const lastSongId = localStorage.getItem(STORAGE.lastSongId);
+        if (!lastSongId) return;
+        loadSongDetail(lastSongId);
+      }
+
       async function bootstrap() {
         const response = await fetch(CATALOG_URL);
-        if (!response.ok) {
-          throw new Error(`Unable to load catalog (${response.status})`);
-        }
+        if (!response.ok) throw new Error(`Unable to load catalog (${response.status})`);
+
         const catalog = await response.json();
-        state.allSongs = catalog.songs || [];
-        state.categories = [...new Set(state.allSongs.map((song) => song.category || "Uncategorized"))]
-          .sort((a, b) => {
+        state.allSongs = (catalog.songs || []).sort((a, b) => {
+          if (Number(a.number) !== Number(b.number)) return Number(a.number) - Number(b.number);
+          return Number(a.page) - Number(b.page);
+        });
+        state.categories = [...new Set(state.allSongs.map((song) => song.category || "Uncategorized"))].sort(
+          (a, b) => {
             const ka = categorySortKey(a);
             const kb = categorySortKey(b);
             if (ka[0] !== kb[0]) return ka[0] - kb[0];
             if (ka[1] !== kb[1]) return ka[1] - kb[1];
             return ka[2].localeCompare(kb[2]);
-          });
+          }
+        );
+
+        applyReaderSize();
         populateCategoryFilter();
         populatePlaylistSelectors();
         loadSongs();
+
+        const lastSongId = localStorage.getItem(STORAGE.lastSongId);
+        if (lastSongId && state.allSongs.some((song) => song.id === lastSongId)) {
+          el.resumeBtn.disabled = false;
+          loadSongDetail(lastSongId);
+        } else if (state.allSongs.length > 0) {
+          loadSongDetail(state.allSongs[0].id);
+        }
       }
 
       el.songList.addEventListener("click", (event) => {
@@ -373,6 +553,21 @@
       el.favoriteBtn.addEventListener("click", toggleFavorite);
       el.createPlaylist.addEventListener("click", createPlaylist);
       el.addPlaylistBtn.addEventListener("click", addSelectedSongToPlaylist);
+      el.prevSong.addEventListener("click", () => moveSong(-1));
+      el.nextSong.addEventListener("click", () => moveSong(1));
+      el.jumpBtn.addEventListener("click", jumpToSongNumber);
+      el.jumpInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") jumpToSongNumber();
+      });
+      el.resumeBtn.addEventListener("click", resumeReading);
+      el.fontDec.addEventListener("click", () => {
+        state.readerSize -= 1;
+        applyReaderSize();
+      });
+      el.fontInc.addEventListener("click", () => {
+        state.readerSize += 1;
+        applyReaderSize();
+      });
 
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./service-worker.js").catch(() => {});
